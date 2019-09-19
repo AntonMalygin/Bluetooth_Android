@@ -561,23 +561,34 @@ public class MainActivity<crc> extends AppCompatActivity implements
     private class ConnectedThread extends Thread {
 
 
-        private final BluetoothSocket bluetoothSocket=null;
-        private InputStream inputStream = null;
-        private OutputStream outputStream = null;
-        private byte[] bytes; //store for the stream
+        private final BluetoothSocket mmSocket;
+        private final InputStream mmInStream;
+        private final OutputStream mmOutStream;
+        private byte[] mmBuffer; //store for the stream
         private boolean isConnected = false;
 
-        public ConnectedThread(BluetoothSocket bluetoothSocket){
+        public ConnectedThread(BluetoothSocket socket){
+            mmSocket=socket;
             InputStream tmpIn   = null;
             OutputStream tmpOut = null;
+
             try{
-                tmpIn=bluetoothSocket.getInputStream();
-                tmpOut=bluetoothSocket.getOutputStream();
+                tmpIn=socket.getInputStream();
+
             } catch (IOException e){
                 e.printStackTrace();
+                Log.e(TAG, "Error occurred when creating input stream", e);
             }
-            this.inputStream=tmpIn;
-            this.outputStream=tmpOut;
+
+            try{
+
+                tmpOut=socket.getOutputStream();
+            } catch (IOException e){
+                e.printStackTrace();
+                Log.e(TAG, "Error occurred when creating output stream", e);
+            }
+            this.mmInStream=tmpIn;
+            this.mmOutStream=tmpOut;
 
             isConnected = true;
         }
@@ -585,37 +596,26 @@ public class MainActivity<crc> extends AppCompatActivity implements
 
         @Override
         public void run(){
-            BufferedInputStream bis = new BufferedInputStream(inputStream);
 
+            byte[] mmBuffer = new byte[1024];
+            int numBytes; // Количество байт принятых из read()
             StringBuffer buffer = new StringBuffer();
             final StringBuffer sbConsole = new StringBuffer();
             final ScrollingMovementMethod movementMethod = new ScrollingMovementMethod();
-
+            ArrayList rebuff = new ArrayList();
 
             while (isConnected){
                 try {
 
-                    byte[] radio_frame_s = new byte[]{(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0,(char)0x0};
-/*
-//-----------------------------структура передаваемых данных (взято с МК)
-                    typedef struct radio_frame_s
-                    {
-                        uint16_t stx;//стартовое слово 0xa544
-                        uint8_t crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
-                        uint8_t len;//длина поля данных
-                        uint8_t seq;//счетчик пакетов
-                        uint8_t sysid;// ид отправителя
-                        uint8_t msgid;//тип сообщения
-                        uint8_t data[];//данные максимум 50 байт если hc12
-                    }radio_frame;
-//------------------------------структура передаваемого сообщения (msgid 1)*/
 
-                    int bytes = bis.read(radio_frame_s);
-                    buffer.append((char)bytes);
-                    Log.d(TAG, "read:" +bytes);
-                    Log.d(TAG, "read to radio_frame_s: "+ radio_frame_s);
-                    Log.d(TAG, "buffer.length: "+buffer.capacity());
+                    numBytes = mmInStream.read();
+                    rebuff.add((char)numBytes);
+                    buffer.append(mmBuffer);
+                    Log.d(TAG, "numBytes:" +numBytes);
+                    Log.d(TAG, "buffer: "+ buffer);
 
+                    Log.d(TAG, "rebuff: "+rebuff);
+                    Log.d(TAG, "rebuff.size: "+rebuff.size());
                         sbConsole.append(buffer.toString());
                         buffer.delete(0, buffer.length());
 
@@ -634,7 +634,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
             }
             try {
 
-                bis.close();
+                mmSocket.close();
             }catch (IOException e){
                 e.printStackTrace();
             }
@@ -642,12 +642,12 @@ public class MainActivity<crc> extends AppCompatActivity implements
 
         public void write(byte[] b, int off, int len) {
 
-            if (outputStream!=null) {
+            if (mmOutStream!=null) {
 
                 try {
-                    outputStream.write(b,off,len);
+                    mmOutStream.write(b,off,len);
 
-                    outputStream.flush();
+                    mmOutStream.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -660,8 +660,8 @@ public class MainActivity<crc> extends AppCompatActivity implements
             try {
                 isConnected=false;
                 //bluetoothSocket.close();
-                inputStream.close();
-                outputStream.close();
+                mmInStream.close();
+                mmOutStream.close();
             }catch (IOException e){
                 e.printStackTrace();
             }
