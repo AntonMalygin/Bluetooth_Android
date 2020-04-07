@@ -1,4 +1,5 @@
 package com.example.bluetooth_android;
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -25,6 +26,7 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -42,6 +44,8 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -85,17 +89,15 @@ public class MainActivity<crc> extends AppCompatActivity implements
     //------------------------------структура передаваемого сообщения (msgid 1) radio_data1_s
     class radio_data1_s {
 
-       // uint8_t dt_format; // формат календаря 10 или 16
-       // uint8_t dt_error;  // код ошибки часов
-       //ds1307::ds1307_map_t dt; //часы, календарь (7 байт)
-       // uint8_t bm_error; //код ошибки bmp280
-        //float int_temp;//внутренняя температура град (bmp280)
-        //float press; //атмосферное давление мм рт ст (bmp280)
-        //uint8_t ds_error; //код ошибки ds18b20
-        //float ext_temp;//внешняя температура град (das18b20)
-
-        Short dt_format, dt_error, t_bm_error, ds_error;
-        Float ds1307, ext_temp;
+        short dt_format; // формат календаря 10 или 16
+        short dt_error;  // код ошибки часов
+        @SuppressLint("SimpleDateFormat")
+        DateFormat ds1307 = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");//часы, календарь (7 байт)
+        short bm_error; //код ошибки bmp280
+        float int_temp;//внутренняя температура град (bmp280)
+        float press; //атмосферное давление мм рт ст (bmp280)
+        short ds_error; //код ошибки ds18b20
+        float ext_temp;//внешняя температура град (das18b20)
 
 
     }
@@ -103,15 +105,10 @@ public class MainActivity<crc> extends AppCompatActivity implements
     class radio_cmd_s
             //--------------------------структура команды (msgid 5) radio_cmd_s
     {
-        short target_id, cmd, len;
-        byte[] dat = new byte[17];
-
-        //    uint8_t target_id; // идентификатор получателя команды
-        //    uint8_t cmd;       // команда
-        //    uint8_t len;       // число доп байт в команде
-        //    uint8_t dat[17];   // данные
-
-
+        short target_id; // идентификатор получателя команды
+        short cmd;       // команда
+        short len;       // число доп байт в команде
+        short[] dat=new short[17];   // данные
     }
 
     class radio_cmd_resp_s
@@ -120,26 +117,28 @@ public class MainActivity<crc> extends AppCompatActivity implements
             // результат операции
             // дополнительные данные
     {
-        short cmd, res;
-        byte[] dat = new byte[17];
+        short cmd;      // команда
+        short res;    // результат операции
+        short[] dat = new short[17];    // дополнительные данные
     }
 
     class radio_frame_s {
-             /*-----------------------------структура передаваемых данных radio_frame_s
-             uint16_t stx;//стартовое слово 0xa544
-             uint8_t crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
-             uint8_t len;//длина поля данных
-             uint8_t seq;//счетчик пакетов
-             uint8_t sysid;// ид отправителя
-             uint8_t m1sgid;//тип сообщения
-             uint8_t data[];//данные максимум 50 байт если hc12
-              */
+             //-----------------------------структура передаваемых данных radio_frame_s
+             short stx;//стартовое слово 0xa544
+             short crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
+             short len;//длина поля данных
+             short seq;//счетчик пакетов
+             short sysid;// ид отправителя
+             short m1sgid;//тип сообщения
+             short[] data = new short[50];//данные максимум 50 байт если hc12
 
-        int stx, crc, radio_frame_s_len, seq, sysid, m1sgid;
-        short aa, bb, cc;
-        int[] data = new int[50];
-        float a_float;
     }
+
+    radio_frame_s radio_frame = new radio_frame_s();
+    radio_frame_s radio_frame_received = new radio_frame_s();
+    radio_cmd_resp_s radio_cmd_resp_s = new radio_cmd_resp_s();
+    radio_cmd_s radio_cmd_s = new radio_cmd_s();
+    radio_data1_s  radio_data1 = new radio_data1_s();
 
     private FrameLayout frameMessage;
     private LinearLayout frameControls;
@@ -150,7 +149,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
     private Switch switchRedLed;
     private Switch switchGreenLed;
     private EditText etConsole;
-    private EditText etChars;
+    private TextView Dig_view;
 
     private Switch switchEnableBt;
     private Button btnEnableSearch;
@@ -166,13 +165,21 @@ public class MainActivity<crc> extends AppCompatActivity implements
     private ProgressDialog progressDialog;
 
 
-    byte[] extra_tab = new byte[]{(byte) ((char) 0x0), (byte) ((char) 0x0), (byte) ((char) 0x0), (byte) ((char) 0xfa)};
-
-
+    //это массив соли, в зависимости от magic из массива берётся определённая цифра
+    //Соль для затруднения определения алгоритма контрольной суммы
+    byte[] extra_tab = new byte[]{
+            (byte) ((char) 10), (byte) ((char) 12), (byte) ((char) 15), (byte) ((char) 18),
+            (byte) ((char) 33), (byte) ((char) 134), (byte) ((char) 65), (byte) ((char) 234),
+            (byte) ((char) 98), (byte) ((char) 68), (byte) ((char) 45), (byte) ((char) 234),
+            (byte) ((char) 54), (byte) ((char) 57), (byte) ((char) 21), (byte) ((char) 61),
+            (byte) ((char) 201), (byte) ((char) 69), (byte) ((char) 5), (byte) ((char) 241),
+            (byte) ((char) 168), (byte) ((char) 23), (byte) ((char) 79), (byte) ((char) 62),
+            (byte) ((char) 77)};
     char[] extra_tab_char = new char[]{128, 0x00, 127, 0x00};
     private Object crc8;
 
 
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -191,7 +198,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
         switchGreenLed = findViewById(id.switch_led_green);
         switchRedLed = findViewById(id.switch_led_red);
         etConsole = findViewById(R.id.et_console);
-        etChars = findViewById(id.et_chars);
+        Dig_view = findViewById(id.Dig_view);
 
         switchEnableBt.setOnCheckedChangeListener(this);
         btnEnableSearch.setOnClickListener(this);
@@ -203,6 +210,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
 
         bluetoothDevices = new ArrayList<>();
 
+        //Инициализация диалогового окна при подключении к устройству
         progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
         progressDialog.setTitle(getString(Connecting));
@@ -229,13 +237,21 @@ public class MainActivity<crc> extends AppCompatActivity implements
             setListAdapter(BT_BOUNDED);
         }
 
+
+
     }
+
+
+    /*
+     * Метод жизненного цикла. Вызывается тогда когда приложение закрывается.
+     * В методе освобождаются ресурсы передатчика Блютус и два метода connectedThread/connectThread
+     * */
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        unregisterReceiver(receiver);
+        unregisterReceiver(receiver); // Регистрация receiver в методе onDestroy
         if (connectThread != null) {
             connectThread.cancel();
         }
@@ -258,23 +274,27 @@ public class MainActivity<crc> extends AppCompatActivity implements
             if (connectThread != null) {
                 connectThread.cancel();
             }
-
+            // Отображения списка сопряженных устройств
             showFrameControls();
         }
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        // Обработка нажатия на элемент списка
         if (parent.equals(listBtDevices)) {
-            BluetoothDevice device = bluetoothDevices.get(position);
+            BluetoothDevice device = bluetoothDevices.get(position);  // Вытаскиваем Устройство блютус с массива устройств через позицию
             if (device != null) {
                 connectThread = new ConnectThread(device);
-                connectThread.start();
+                connectThread.start(); // Попытка соединиться с устройством на которое нажали
             }
         }
 
 
     }
+
+
+
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -299,13 +319,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
             extra_tab[0] = (byte) 0x42;
             //  t.a_float = Float.parseFloat("19.95");
 
-            t.a_float = ByteBuffer.wrap(extra_tab).getFloat(0);
-            Log.d(TAG, "Тест " + t.a_float);
-            Log.d(TAG, "Тест " + t.crc);
-            Log.d(TAG, "Тест " + t.radio_frame_s_len);
-            Log.d(TAG, "Тест " + t.seq);
-            Log.d(TAG, "Тест " + t.sysid);
-            Log.d(TAG, "Тест " + t.m1sgid);
+
 
 
         }
@@ -324,19 +338,29 @@ public class MainActivity<crc> extends AppCompatActivity implements
             }
         }
     }
-
+    //Подпрограмма преобразования формата char в формат byte (пока до конца не протестирована)
     public byte[] charsToBytes(char[] chars) {
         Charset charset = Charset.forName("UTF-8");
         ByteBuffer byteBuffer = charset.encode(CharBuffer.wrap(chars));
         return Arrays.copyOf(byteBuffer.array(), byteBuffer.limit());
     }
-
+    //Подпрограмма преобразования формата byte в формат char (пока до конца не протестирована)
     public char[] bytesToChars(byte[] bytes) {
         Charset charset = Charset.forName("UTF-8");
         CharBuffer charBuffer = charset.decode(ByteBuffer.wrap(bytes));
         return Arrays.copyOf(charBuffer.array(), charBuffer.limit());
     }
-
+    // расчёт контрольной суммы 8 бит возвращает контрольную сумму
+    /*
+  Name  : CRC-8
+  Poly  : 0x31    x^8 + x^5 + x^4 + 1
+  Init  : 0xFF
+  Revert: false
+  XorOut: 0x00
+  Check : 0xF7 ("123456789")
+  MaxLen: 15 байт(127 бит) - обнаружение
+    одинарных, двойных, тройных и всех нечетных ошибок
+*/
     private int crc8(byte[] pcBook, int len) {
         int i = 0, i1;
 
@@ -354,13 +378,16 @@ public class MainActivity<crc> extends AppCompatActivity implements
         }
         return crc;
     }
-
+//метод подготовки данных для передачи на часы. Пока не переписана на JAVA
     private void radio_pool() {
         int ukz;
         float tst;
 
 
     }
+
+
+
 
     private void showFrameMessage() {
         frameMessage.setVisibility(View.VISIBLE);
@@ -379,6 +406,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
         frameMessage.setVisibility(View.GONE);
         frameControls.setVisibility(View.GONE);
     }
+
 
     private void enableBt(boolean flag) {
         if (flag) {
@@ -505,7 +533,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
             try {
                 Method method = device.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
                 bluetoothSocket = (BluetoothSocket) method.invoke(device, 1);
-                progressDialog.show();
+                progressDialog.show(); // отображение диалогового окна о текущем соединении с устройством
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -516,14 +544,14 @@ public class MainActivity<crc> extends AppCompatActivity implements
             try {
                 bluetoothSocket.connect();
                 success = true;
-                progressDialog.dismiss();
+                progressDialog.dismiss(); // Скрывание диалогового окна о текущем соединении с устройством при удачном
             } catch (IOException e) {
                 e.printStackTrace();
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        progressDialog.dismiss();
+                        progressDialog.dismiss(); // Скрывание диалогового окна о текущем соединении с устройством при удачном
                         Toast.makeText(MainActivity.this, getString(dont_connect), Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -532,12 +560,13 @@ public class MainActivity<crc> extends AppCompatActivity implements
             }
 
             if (success) {
-                connectedThread = new ConnectedThread(bluetoothSocket);
-                connectedThread.start();
+                connectedThread = new ConnectedThread(bluetoothSocket); // создаём экземпляр класса ConnectedThread и передаём ему блютуссокет
+                connectedThread.start();// запуск
+                // для вмешательства стороннего потока в пользовательский интерфейс создается метод
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        showFrameLedControls();
+                        showFrameLedControls();// если соединение с устройством прошло удачно, то отображаем панельку управления светодиодами
                     }
                 });
             }
@@ -557,7 +586,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
             }
         }
     }
-
+    // Класс считывания информации с устройства
     private class ConnectedThread extends Thread {
 
 
@@ -565,7 +594,7 @@ public class MainActivity<crc> extends AppCompatActivity implements
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
         private byte[] mmBuffer; //store for the stream
-        private boolean isConnected = false;
+        private boolean isConnected = false;// Состояние соединения (Активно/Неактивно)
 
         public ConnectedThread(BluetoothSocket socket){
             mmSocket=socket;
@@ -597,36 +626,79 @@ public class MainActivity<crc> extends AppCompatActivity implements
         @Override
         public void run(){
 
-            byte[] mmBuffer = new byte[1024];
+            mmBuffer = new byte[50];
             int numBytes; // Количество байт принятых из read()
-            StringBuffer buffer = new StringBuffer();
-            final StringBuffer sbConsole = new StringBuffer();
+            final short [] mmB = new short[50];
+            short len, temp;
+            len=0;
+            temp=0;
+            byte ukz,i;
+            ukz=0;
+            i=0;
+            StringBuffer buffer = new StringBuffer();// хранит в себе символы. Принимает символы с блютус и складывает их в готовую строку
+            final StringBuffer sbConsole = new StringBuffer(); // буфер для конечного вывода строки
             final ScrollingMovementMethod movementMethod = new ScrollingMovementMethod();
-            ArrayList rebuff = new ArrayList();
+            final ArrayList rebuff = new ArrayList();
 
             while (isConnected){
                 try {
 
 
-                    numBytes = mmInStream.read();
-                    rebuff.add((char)numBytes);
-                    buffer.append(mmBuffer);
+                    numBytes = mmInStream.read(mmBuffer);
+
+                    rebuff.add(numBytes);
+                    for (i=0;i<numBytes;i++) {
+//                        rebuff.add(mmBuffer[i]);
+                        mmB[ukz]= (short) (mmBuffer[i]&0xFF); // Пишем данные во временный массив, и делаем Логическое И, что бы числа не были больше 0xFF (255)
+
+
+
+
+
+                        if ((ukz == 0)&&(mmB[0]==0xA5))     // Принимаем первый байт заголовка
+                        {
+
+                            ukz++;
+                            continue;
+                        }
+                        if (ukz==1){                            // Принимаем второй байт заголовка
+                            if (mmB[1]==0x44){
+                                ukz++;
+                            } else {ukz=0;}
+                            continue;
+                        }
+                        ukz++;                          // сдвигаем указатель на сслпозицию
+                        if (ukz>=7){
+                            if ((mmB[3]+7)==ukz){
+                                //char crc = crc8(extra_tab_char,ukz);
+                                ukz=0;
+
+
+
+
+                                return;
+                            }
+                        }
+                    }
+
+
                     Log.d(TAG, "numBytes:" +numBytes);
                     Log.d(TAG, "buffer: "+ buffer);
 
                     Log.d(TAG, "rebuff: "+rebuff);
                     Log.d(TAG, "rebuff.size: "+rebuff.size());
+                    Log.d(TAG, "mmBuffer:" + Arrays.toString(mmBuffer));
                         sbConsole.append(buffer.toString());
-                        buffer.delete(0, buffer.length());
 
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                etConsole.setText(sbConsole.toString());
-                                etConsole.setMovementMethod(movementMethod);
-                                etChars.setText(R.string.hello);
-                            }
-                        });
+
+                    // Наполнение экземпляра массива radio_frame_s данными полученными с блютус
+                    radio_frame_received.crc=mmB[2]; // Контрольная сумма
+                    radio_frame_received.len=mmB[3];// Длина поля данных
+                    radio_frame_received.seq=mmB[4];// счетчик пакетов
+                    radio_frame_received.sysid=mmB[5];// ид отправителя
+                    radio_frame_received.m1sgid=mmB[6];// тип сообщения
+
+
 
                 }catch (IOException e){
                     e.printStackTrace();

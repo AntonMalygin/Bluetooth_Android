@@ -17,7 +17,7 @@
 
     <FrameLayout
         android:id="@+id/frame_message"
-        android:visibility="gone"
+        android:visibility="visible"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -33,7 +33,7 @@
 
     <LinearLayout
         android:id="@+id/frame_control"
-        android:visibility="gone"
+        android:visibility="visible"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -64,7 +64,7 @@
 
     <RelativeLayout
         android:id="@+id/frameLedControls"
-        android:visibility="visible"
+        android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -105,17 +105,14 @@
             android:textColor="@color/color_green"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
-        <EditText
-            android:id="@+id/et_chars"
-            android:layout_below="@+id/switch_led_green"
-            android:layout_marginTop="8dp"
-            android:lines="4"
-            android:editable="false"
-            android:gravity="bottom"
+        <TextView
+            android:id="@+id/Dig_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints=""
-            />
+            android:layout_height="match_parent"
+            android:textSize="18sp"
+            android:layout_below="@+id/switch_led_green"/>
+
+
 
     </RelativeLayout>
 </LinearLayout>
