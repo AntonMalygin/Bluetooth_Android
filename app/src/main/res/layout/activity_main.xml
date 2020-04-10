@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
     tools:context=".MainActivity">
+
 
     <Switch
         android:id="@+id/switch_enable_bt"
@@ -33,7 +34,7 @@
 
     <LinearLayout
         android:id="@+id/frame_control"
-        android:visibility="visible"
+        android:visibility="gone"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -59,60 +60,197 @@
             android:id="@+id/lv_bt_device"
             android:layout_marginTop="8dp"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"></ListView>
+            android:layout_height="match_parent" />
     </LinearLayout>
 
     <RelativeLayout
         android:id="@+id/frameLedControls"
-        android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="537dp"
+        android:visibility="gone">
 
         <Button
             android:id="@+id/btn_disconnect"
-            android:text="@string/disconnect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="30dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <EditText
-            android:id="@+id/et_console"
-            android:layout_below="@+id/btn_disconnect"
-            android:layout_marginTop="8dp"
-            android:lines="4"
-            android:editable="false"
-            android:gravity="bottom"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="" />
+            android:text="@string/disconnect" />
+
 
         <Switch
             android:id="@+id/switch_led_red"
-            android:text="@string/led_red"
-            android:layout_centerInParent="true"
-            android:textSize="18sp"
-            android:textColor="@color/color_red"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/btn_disconnect"
+            android:layout_centerInParent="true"
+            android:text="@string/led_red"
+            android:textColor="@color/color_red"
+            android:textSize="18sp" />
 
         <Switch
             android:id="@+id/switch_led_green"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_below="@+id/switch_led_red"
-            android:text="@string/led_green"
-            android:layout_marginTop="8dp"
             android:layout_centerInParent="true"
-            android:textSize="18sp"
+            android:layout_marginTop="8dp"
+            android:text="@string/led_green"
             android:textColor="@color/color_green"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:textSize="18sp" />
+
+
         <TextView
-            android:id="@+id/Dig_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:textSize="18sp"
-            android:layout_below="@+id/switch_led_green"/>
+            android:id="@+id/Dig_Frame_crc"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/switch_led_green"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/Frame_crc"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/switch_led_green"
+            android:layout_marginStart="45dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/frame_crc" />
+
+        <TextView
+            android:id="@+id/Dig_Frame_len"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/Dig_Frame_crc"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/Frame_len"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@id/Frame_crc"
+            android:layout_marginStart="45dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/frame_len" />
+
+        <TextView
+            android:id="@+id/Dig_Frame_seq"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/Dig_Frame_len"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/Frame_seq"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@id/Frame_len"
+            android:layout_marginStart="45dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/frame_seq" />
+
+        <TextView
+            android:id="@+id/Dig_Frame_sysid"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/Dig_Frame_seq"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/Frame_sysid"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@id/Frame_seq"
+            android:layout_marginStart="45dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/frame_sysid" />
+
+        <TextView
+            android:id="@+id/Dig_Frame_msgid"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@+id/Dig_Frame_sysid"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/Frame_msgid"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_below="@id/Frame_sysid"
+            android:layout_marginStart="45dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/frame_msgid" />
+
+        <TextView
+            android:id="@+id/Temp_in"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Frame_msgid"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"
+            android:text="@string/Temp_in" />
+
+     <TextView
+         android:id="@+id/Dig_Temp_in"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_below="@+id/Frame_msgid"
+         android:layout_marginStart="250sp"
+         android:layout_marginTop="14dp"
+         android:textSize="22sp"/>
+
+        <TextView
+            android:id="@+id/Temp_out"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Temp_in"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"
+            android:text="@string/Temp_out" />
+
+        <TextView
+            android:id="@+id/Dig_Temp_out"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/Dig_Temp_in"
+            android:layout_marginStart="250sp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"/>
+
+        <TextView
+            android:id="@+id/Pressure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Temp_out"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"
+            android:text="@string/Pressure_out" />
+
+        <TextView
+            android:id="@+id/Dig_Press"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/Dig_Temp_out"
+            android:layout_marginStart="250sp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"/>
+
+
 
 
 
     </RelativeLayout>
+
 </LinearLayout>

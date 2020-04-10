@@ -16,4 +16,13 @@
     <string name="test">test</string>
     <string name="hello">привет</string>
     <string name="no_data">Нет данных</string>
+    <string name="frame_crc">Контрольная сумма пакета</string>
+    <string name="frame_len">Длина поля данных</string>
+    <string name="frame_seq">Счётчик пакетов</string>
+    <string name="frame_sysid">ID отправителя</string>
+    <string name="frame_msgid">тип сообщения</string>
+    <string name="Frame_data">Данные с фрейма</string>
+    <string name="Temp_out">Температура на улице</string>
+    <string name="Pressure_out">Давление мм рт. ст.</string>
+    <string name="Temp_in">Температура в гараже</string>
 </resources>
