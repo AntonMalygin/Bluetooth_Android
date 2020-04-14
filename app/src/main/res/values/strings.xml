@@ -25,4 +25,7 @@
     <string name="Temp_out">Температура на улице</string>
     <string name="Pressure_out">Давление мм рт. ст.</string>
     <string name="Temp_in">Температура в гараже</string>
+    <string name="Time">Время</string>
+    <string name="Date">Дата</string>
+    <string name="sinx_time">Синхронизировать время</string>
 </resources>

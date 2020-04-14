@@ -1,4 +1,5 @@
 package com.example.bluetooth_android;
+
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -10,8 +11,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
-
-
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -20,7 +19,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -39,17 +37,15 @@ import androidx.core.content.ContextCompat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.ShortBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -64,7 +60,6 @@ import static com.example.bluetooth_android.R.string.dont_connect;
 import static com.example.bluetooth_android.R.string.please_wait;
 import static com.example.bluetooth_android.R.string.start_search;
 import static com.example.bluetooth_android.R.string.stop_search;
-import java.lang.*;
 
 
 public class MainActivity extends AppCompatActivity implements
@@ -84,19 +79,16 @@ public class MainActivity extends AppCompatActivity implements
     public static final int LED_GREEN = 31;
     private static final int FRAME_OK =32;
 
-    private StringBuilder sb = new StringBuilder();
-  //  private final byte[] pcBlock = new byte[0];
-  //  private final int len = 0;
-
 
     //------------------------------структура передаваемого сообщения (msgid 1) radio_data1_s
-    class radio_data1_s {
+    static class radio_data1_s {
 
         short dt_format; // формат календаря 10 или 16
         short dt_error;  // код ошибки часов
-        @SuppressLint("SimpleDateFormat")
-        DateFormat ds1307 = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");//часы, календарь (7 байт)
-        short bm_error; //код ошибки bmp280
+
+        String str_data = "";
+        String str_time = "";
+       short bm_error; //код ошибки bmp280
         float int_temp;//внутренняя температура град (bmp280)
         float press; //атмосферное давление мм рт ст (bmp280)
         short ds_error; //код ошибки ds18b20
@@ -105,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    class radio_cmd_s
+    static class radio_cmd_s
             //--------------------------структура команды (msgid 5) radio_cmd_s
     {
         short target_id; // идентификатор получателя команды
@@ -114,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements
         short[] dat=new short[17];   // данные
     }
 
-    class radio_cmd_resp_s
+    static class radio_cmd_resp_s
             //-----------------------ответ на команду (msgid 6) radio_cmd_resp_s
             // команда
             // результат операции
@@ -125,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements
         short[] dat = new short[17];    // дополнительные данные
     }
 
-    class radio_frame_s {
+    static class radio_frame_s {
              //-----------------------------структура передаваемых данных radio_frame_s
              short stx;//стартовое слово 0xa544
              short crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
@@ -151,20 +143,14 @@ public class MainActivity extends AppCompatActivity implements
     private Button btnDisconnect;
     private Switch switchRedLed;
     private Switch switchGreenLed;
- //   private EditText etConsole;
-
-    private TextView Dig_Frame_crc;
-    private TextView Dig_Frame_len;
-    private TextView Dig_Frame_seq;
-    private TextView Dig_Frame_sysid;
-    private TextView Dig_Frame_msgid;
 
     private TextView Dig_Temp_in;
     private TextView Dig_Temp_out;
     private TextView Dig_Press;
 
-    //   private TextView Dig_Frame_data;
- //   private TextView Frame_data;
+    private TextView Systimes;
+    private TextView Dig_Time;
+    private TextView Dig_Date;
 
     private Switch switchEnableBt;
     private Button btnEnableSearch;
@@ -183,7 +169,6 @@ public class MainActivity extends AppCompatActivity implements
 
 
 
-
     //это массив соли, в зависимости от magic из массива берётся определённая цифра
     //Соль для затруднения определения алгоритма контрольной суммы
     byte[] extra_tab = new byte[]{
@@ -194,8 +179,8 @@ public class MainActivity extends AppCompatActivity implements
             (byte) ((char) 201), (byte) ((char) 69), (byte) ((char) 5), (byte) ((char) 241),
             (byte) ((char) 168), (byte) ((char) 23), (byte) ((char) 79), (byte) ((char) 62),
             (byte) ((char) 77)};
-    char[] extra_tab_char = new char[]{128, 0x00, 127, 0x00};
-    private Object crc8;
+
+
 
 
 
@@ -218,25 +203,26 @@ public class MainActivity extends AppCompatActivity implements
         btnDisconnect = findViewById(id.btn_disconnect);
         switchGreenLed = findViewById(id.switch_led_green);
         switchRedLed = findViewById(id.switch_led_red);
-       // etConsole = findViewById(R.id.et_console);
-
-        Dig_Frame_crc = findViewById(id.Dig_Frame_crc);// для вывода текста, полученного c Bluetooth
-        Dig_Frame_len = findViewById(id.Dig_Frame_len);// для вывода текста, полученного c Bluetooth
-        Dig_Frame_seq = findViewById(id.Dig_Frame_seq);// для вывода текста, полученного c Bluetooth
-        Dig_Frame_sysid = findViewById(id.Dig_Frame_sysid);// для вывода текста, полученного c Bluetooth
-        Dig_Frame_msgid = findViewById(id.Dig_Frame_msgid);// для вывода текста, полученного c Bluetooth
 
         Dig_Temp_in = findViewById(id.Dig_Temp_in);
         Dig_Temp_out = findViewById(id.Dig_Temp_out);
         Dig_Press = findViewById(id.Dig_Press);
 
+        TextView time = findViewById(id.Time);
+        TextView date = findViewById(id.Date);
+        Button btnSynx = findViewById(id.btn_sinx);
 
+        Systimes = findViewById(id.sys_time);
+        Dig_Date = findViewById(id.Dig_Date);
+        Dig_Time = findViewById(id.Dig_Time);
 
         switchEnableBt.setOnCheckedChangeListener(this);
         btnEnableSearch.setOnClickListener(this);
         listBtDevices.setOnItemClickListener(this);
 
         btnDisconnect.setOnClickListener(this);
+        btnSynx.setOnClickListener(this);
+
         switchGreenLed.setOnCheckedChangeListener(this);
         switchRedLed.setOnCheckedChangeListener(this);
 
@@ -255,7 +241,13 @@ public class MainActivity extends AppCompatActivity implements
         filter.addAction(BluetoothDevice.ACTION_FOUND);
         registerReceiver(receiver, filter);
 
+
+
+
+
+
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
 
         if (bluetoothAdapter == null) {
             Toast.makeText(this, bluetooth_not_supported, Toast.LENGTH_SHORT).show();
@@ -346,11 +338,7 @@ public class MainActivity extends AppCompatActivity implements
              enableLed(extra_tab,0x5, 0x5);
             Log.d(TAG, "switchGreenLed:  Переключаем зелёный");
 
-            extra_tab[3] = (byte) 0x66;
-            extra_tab[2] = (byte) 0xE6;
-            extra_tab[1] = (byte) 0xF6;
-            extra_tab[0] = (byte) 0x42;
-            //  t.a_float = Float.parseFloat("19.95");
+
 
 
 
@@ -387,9 +375,7 @@ public class MainActivity extends AppCompatActivity implements
     // Программа преобразования формата short формат флоат
     public float shortToFloat (short[] data, short ukz){
 
-        float value = Float.intBitsToFloat(data[ukz] ^ data[ukz + 1] << 8 ^ data[ukz + 2] << 16 ^ data[ukz + 3] << 24);
-
-        return value;
+        return Float.intBitsToFloat(data[ukz] ^ data[ukz + 1] << 8 ^ data[ukz + 2] << 16 ^ data[ukz + 3] << 24);
     }
 
 
@@ -404,8 +390,8 @@ public class MainActivity extends AppCompatActivity implements
   MaxLen: 15 байт(127 бит) - обнаружение
     одинарных, двойных, тройных и всех нечетных ошибок
 */
-    private int crc8(byte[] pcBook, int len) {
-        int i = 0, i1;
+    private int crc8(byte[] pcBook,int len) {
+        int i, i1;
 
         int crc = 0xFF;
 
@@ -414,20 +400,17 @@ public class MainActivity extends AppCompatActivity implements
             crc ^= pcBook[i1];
 
             for (i = 0; i < 8; i++) {
-                if ((crc & 0x80) == 0x80) crc = ((crc << 1) ^ 0x31);
-                else crc = crc << 1;
+                if ((crc & 0x80) == 0x80) crc = (short) ((crc << 1) ^ 0x31);
+                else crc = (short) (crc << 1);
             }
 
         }
         return crc;
     }
 //метод подготовки данных для передачи на часы. Пока не переписана на JAVA
-    private void radio_pool() {
-        int ukz;
-        float tst;
-
-
-    }
+ //   private void radio_pool() {
+//
+  //  }
 
 
 
@@ -565,27 +548,27 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     }
+
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss dd.MM.yyyy");
+
+
     @SuppressLint("HandlerLeak")
-    private Handler outHandler =new Handler(){
+    private final Handler outHandler = new Handler() {
 
         @SuppressLint("SetTextI18n")
         @Override
         public void handleMessage(Message msg) {
-            switch (msg.what){
 
-                case FRAME_OK:
-                   Dig_Frame_crc.setText(Short.toString(radio_frame_received.crc));
-                   Dig_Frame_len.setText(Short.toString(radio_frame_received.len));
-                   Dig_Frame_seq.setText(Short.toString(radio_frame_received.seq));
-                   Dig_Frame_sysid.setText(Short.toString(radio_frame_received.sysid));
-                   Dig_Frame_msgid.setText(Short.toString(radio_frame_received.msgid));
-                    Dig_Temp_in.setText(Float.toString(radio_data1.int_temp));
-                    Dig_Temp_out.setText(Float.toString(radio_data1.ext_temp));
-                    Dig_Press.setText(Float.toString(radio_data1.press));
-                  //  radio_data1.int_temp=shortToFloat(radio_frame_received.data, (short) 10);
-                   // Toast.makeText(MainActivity.this, "FRAME_OK " + Integer.toHexString(radio_frame_received.crc), Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "handleMessage: Frame OK" + radio_data1.int_temp);
 
+            if (msg.what == FRAME_OK) {
+                Dig_Temp_in.setText(Float.toString(radio_data1.int_temp));
+                Dig_Temp_out.setText(Float.toString(radio_data1.ext_temp));
+                Dig_Press.setText(Float.toString(radio_data1.press));
+
+                Dig_Time.setText(radio_data1.str_time);
+                Dig_Date.setText(radio_data1.str_data);
+
+                Systimes.setText(sdf.format(new Date(System.currentTimeMillis())));
 
             }
 
@@ -600,7 +583,7 @@ public class MainActivity extends AppCompatActivity implements
         private boolean success = false;
 
 
-        public ConnectThread(BluetoothDevice device) {
+        ConnectThread(BluetoothDevice device) {
             try {
                 Method method = device.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
                 bluetoothSocket = (BluetoothSocket) method.invoke(device, 1);
@@ -644,12 +627,12 @@ public class MainActivity extends AppCompatActivity implements
 
         }
 
-        public boolean isConnect() {
+        boolean isConnect() {
             return bluetoothSocket.isConnected();
         }
 
 
-        public void cancel() {
+        void cancel() {
             try {
                 bluetoothSocket.close();
             } catch (IOException e) {
@@ -664,11 +647,10 @@ public class MainActivity extends AppCompatActivity implements
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
-        private byte[] mmBuffer; //store for the stream
         private boolean isConnected = false;// Состояние соединения (Активно/Неактивно)
         private Handler handler;
 
-        public ConnectedThread(BluetoothSocket socket, Handler handler){
+        ConnectedThread(BluetoothSocket socket, Handler handler){
             mmSocket=socket;
             this.handler = handler;
             InputStream tmpIn   = null;
@@ -699,15 +681,15 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void run(){
 
-            mmBuffer = new byte[60];
+            //store for the stream
+            byte[] mmBuffer = new byte[60];
             int numBytes; // Количество байт принятых из read()
             final short [] mmB = new short[60];
-            short len, temp;
-            len=0;
-            temp=0;
+            short len;
+
             short ukz,i;
             ukz=0;
-            i=0;
+
 
 
             while (isConnected){
@@ -748,7 +730,11 @@ public class MainActivity extends AppCompatActivity implements
                             if ((mmB[3]+7)==ukz)
                             {
                                 ukz=0;
+
                                 len = mmB[3];
+
+                                int crc_in = crc8(mmB[],ukz);
+
                                 radio_frame_received.crc=mmB[2]; // Контрольная сумма
                                 radio_frame_received.len=mmB[3];// Длина поля данных
                                 radio_frame_received.seq=mmB[4];// счетчик пакетов
@@ -758,6 +744,21 @@ public class MainActivity extends AppCompatActivity implements
                                 radio_data1.int_temp=shortToFloat(radio_frame_received.data, (short) 10);
                                 radio_data1.ext_temp=shortToFloat(radio_frame_received.data, (short) 19);
                                 radio_data1.press=shortToFloat(radio_frame_received.data, (short) 14);
+
+
+                                // Подготовка строки с форматирование для вывода на экран времени часов
+                                radio_data1.str_time=String.format("%02x",radio_frame_received.data[4])+":"+String.format("%02x",radio_frame_received.data[3])+":"+String.format("%02x",radio_frame_received.data[2]);
+
+                                // Подготовка строки с форматирование для вывода на экран даты часов
+                                radio_data1.str_data=String.format("%02x",radio_frame_received.data[6])+"."+String.format("%02x",radio_frame_received.data[7])+"."+String.format("%02x",radio_frame_received.data[8]);
+
+
+
+
+
+
+
+
                                 handler.sendEmptyMessage(FRAME_OK);
                             }
                         }
@@ -789,7 +790,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
-        public void write(byte[] b, int off, int len) {
+        void write(byte[] b, int off, int len) {
 
             if (mmOutStream!=null) {
 
@@ -806,7 +807,7 @@ public class MainActivity extends AppCompatActivity implements
 
 
 
-        public void cancel(){
+        void cancel(){
             try {
                 isConnected=false;
                 //bluetoothSocket.close();

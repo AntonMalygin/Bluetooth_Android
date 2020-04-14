@@ -18,7 +18,7 @@
 
     <FrameLayout
         android:id="@+id/frame_message"
-        android:visibility="visible"
+        android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -67,7 +67,7 @@
         android:id="@+id/frameLedControls"
         android:layout_width="match_parent"
         android:layout_height="537dp"
-        android:visibility="gone">
+        android:visibility="visible">
 
         <Button
             android:id="@+id/btn_disconnect"
@@ -100,101 +100,13 @@
             android:textSize="18sp" />
 
 
-        <TextView
-            android:id="@+id/Dig_Frame_crc"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/switch_led_green"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:textSize="18sp" />
 
-        <TextView
-            android:id="@+id/Frame_crc"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/switch_led_green"
-            android:layout_marginStart="45dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/frame_crc" />
-
-        <TextView
-            android:id="@+id/Dig_Frame_len"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/Dig_Frame_crc"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/Frame_len"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@id/Frame_crc"
-            android:layout_marginStart="45dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/frame_len" />
-
-        <TextView
-            android:id="@+id/Dig_Frame_seq"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/Dig_Frame_len"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/Frame_seq"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@id/Frame_len"
-            android:layout_marginStart="45dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/frame_seq" />
-
-        <TextView
-            android:id="@+id/Dig_Frame_sysid"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/Dig_Frame_seq"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/Frame_sysid"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@id/Frame_seq"
-            android:layout_marginStart="45dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/frame_sysid" />
-
-        <TextView
-            android:id="@+id/Dig_Frame_msgid"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@+id/Dig_Frame_sysid"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/Frame_msgid"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_below="@id/Frame_sysid"
-            android:layout_marginStart="45dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/frame_msgid" />
 
         <TextView
             android:id="@+id/Temp_in"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/Frame_msgid"
+            android:layout_below="@id/switch_led_green"
             android:layout_marginStart="8dp"
             android:layout_marginTop="14dp"
             android:textSize="22sp"
@@ -204,7 +116,7 @@
          android:id="@+id/Dig_Temp_in"
          android:layout_width="wrap_content"
          android:layout_height="wrap_content"
-         android:layout_below="@+id/Frame_msgid"
+         android:layout_below="@+id/switch_led_green"
          android:layout_marginStart="250sp"
          android:layout_marginTop="14dp"
          android:textSize="22sp"/>
@@ -247,8 +159,63 @@
             android:layout_marginTop="14dp"
             android:textSize="22sp"/>
 
+        <TextView
+            android:id="@+id/Time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Pressure"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"
+            android:text="@string/Time" />
 
+        <TextView
+            android:id="@+id/Dig_Time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/Pressure"
+            android:layout_marginStart="150dp"
+            android:layout_marginTop="14dp"
+            android:textSize="20sp"/>
 
+        <TextView
+            android:id="@+id/Date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Time"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="22sp"
+            android:text="@string/Date" />
+
+        <TextView
+            android:id="@+id/Dig_Date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/Dig_Time"
+            android:layout_marginStart="150dp"
+            android:layout_marginTop="14dp"
+            android:textSize="20sp"/>
+
+        <Button
+            android:textStyle="bold"
+            android:id="@+id/btn_sinx"
+            android:layout_below="@+id/Date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="70dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dp"
+            android:text="@string/sinx_time" />
+
+        <TextView
+            android:id="@+id/sys_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/btn_sinx"
+            android:layout_marginStart="70dp"
+            android:layout_marginTop="10dp"
+            android:textSize="20sp"/>
 
 
     </RelativeLayout>
