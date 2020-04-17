@@ -28,4 +28,6 @@
     <string name="Time">Время</string>
     <string name="Date">Дата</string>
     <string name="sinx_time">Синхронизировать время</string>
+    <string name="Send_error">Не получилось отправить данные</string>
+    <string name="Synx_clock">Часы Сихронизированы</string>
 </resources>

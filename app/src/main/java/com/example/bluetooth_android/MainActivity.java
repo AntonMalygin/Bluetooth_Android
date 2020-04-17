@@ -42,9 +42,11 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -57,6 +59,7 @@ import static com.example.bluetooth_android.R.layout;
 import static com.example.bluetooth_android.R.string.Connecting;
 import static com.example.bluetooth_android.R.string.bluetooth_not_supported;
 import static com.example.bluetooth_android.R.string.dont_connect;
+import static com.example.bluetooth_android.R.string.hh;
 import static com.example.bluetooth_android.R.string.please_wait;
 import static com.example.bluetooth_android.R.string.start_search;
 import static com.example.bluetooth_android.R.string.stop_search;
@@ -78,20 +81,29 @@ public class MainActivity extends AppCompatActivity implements
     public static final int LED_RED = 30;
     public static final int LED_GREEN = 31;
     private static final int FRAME_OK =32;
+    private static final int SEND_ERROR = 33;
+
+    // Присвоение констант для часов (команды и т.п.)
+    private static final byte SYNX_CLOCK = 2;
+    private static final byte ID_SYS_Clock = 4;
+    private static byte sh_seq=0;//вставляем счетчик пакетов
+
+
+    private boolean flag_clock_synx=false; // флаг для синхронизации часов с текущим временем телефона
 
 
     //------------------------------структура передаваемого сообщения (msgid 1) radio_data1_s
     static class radio_data1_s {
 
-        short dt_format; // формат календаря 10 или 16
-        short dt_error;  // код ошибки часов
+        byte dt_format; // формат календаря 10 или 16
+        byte dt_error;  // код ошибки часов
 
         String str_data = "";
         String str_time = "";
-       short bm_error; //код ошибки bmp280
+        byte bm_error; //код ошибки bmp280
         float int_temp;//внутренняя температура град (bmp280)
         float press; //атмосферное давление мм рт ст (bmp280)
-        short ds_error; //код ошибки ds18b20
+        byte ds_error; //код ошибки ds18b20
         float ext_temp;//внешняя температура град (das18b20)
 
 
@@ -100,10 +112,10 @@ public class MainActivity extends AppCompatActivity implements
     static class radio_cmd_s
             //--------------------------структура команды (msgid 5) radio_cmd_s
     {
-        short target_id; // идентификатор получателя команды
-        short cmd;       // команда
-        short len;       // число доп байт в команде
-        short[] dat=new short[17];   // данные
+        byte target_id; // идентификатор получателя команды
+        byte cmd;       // команда
+        byte len;       // число доп байт в команде
+        byte[] dat=new byte[17];   // данные
     }
 
     static class radio_cmd_resp_s
@@ -112,24 +124,25 @@ public class MainActivity extends AppCompatActivity implements
             // результат операции
             // дополнительные данные
     {
-        short cmd;      // команда
-        short res;    // результат операции
-        short[] dat = new short[17];    // дополнительные данные
+        byte cmd;      // команда
+        byte res;    // результат операции
+        byte[] dat = new byte[17];    // дополнительные данные
     }
 
     static class radio_frame_s {
              //-----------------------------структура передаваемых данных radio_frame_s
-             short stx;//стартовое слово 0xa544
-             short crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
-             short len;//длина поля данных
-             short seq;//счетчик пакетов
-             short sysid;// ид отправителя
-             short msgid;//тип сообщения
-             short[] data = new short[50];//данные максимум 50 байт если hc12
+             byte stx_1;//стартовое слово 0xA5
+             byte stx_2;//стартовое слово 0x44
+             byte crc; //контрольная сумма всего сообщения с солью в зависимости от msgid
+             byte len;//длина поля данных
+             byte seq;//счетчик пакетов
+             byte sysid;// ид отправителя
+             byte msgid;//тип сообщения
+             byte[] data = new byte[50];//данные максимум 50 байт если hc12
 
     }
 
-    radio_frame_s radio_frame = new radio_frame_s();
+    radio_frame_s radio_frame_send = new radio_frame_s();
     radio_frame_s radio_frame_received = new radio_frame_s();
     radio_cmd_resp_s radio_cmd_resp_s = new radio_cmd_resp_s();
     radio_cmd_s radio_cmd_s = new radio_cmd_s();
@@ -141,8 +154,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private RelativeLayout frameLedControls;
     private Button btnDisconnect;
-    private Switch switchRedLed;
-    private Switch switchGreenLed;
+    private Button clock_Synx;
 
     private TextView Dig_Temp_in;
     private TextView Dig_Temp_out;
@@ -171,14 +183,8 @@ public class MainActivity extends AppCompatActivity implements
 
     //это массив соли, в зависимости от magic из массива берётся определённая цифра
     //Соль для затруднения определения алгоритма контрольной суммы
-    byte[] extra_tab = new byte[]{
-            (byte) ((char) 10), (byte) ((char) 12), (byte) ((char) 15), (byte) ((char) 18),
-            (byte) ((char) 33), (byte) ((char) 134), (byte) ((char) 65), (byte) ((char) 234),
-            (byte) ((char) 98), (byte) ((char) 68), (byte) ((char) 45), (byte) ((char) 234),
-            (byte) ((char) 54), (byte) ((char) 57), (byte) ((char) 21), (byte) ((char) 61),
-            (byte) ((char) 201), (byte) ((char) 69), (byte) ((char) 5), (byte) ((char) 241),
-            (byte) ((char) 168), (byte) ((char) 23), (byte) ((char) 79), (byte) ((char) 62),
-            (byte) ((char) 77)};
+    byte[] extra_tab = new byte[]{10,12,15,18,33, (byte) 134, 65, (byte)234,98,68,45,
+            (byte)234,54, 57,21,61,(byte) 201,69,5, (byte)241,(byte)168,23,79,62,77};
 
 
 
@@ -201,8 +207,7 @@ public class MainActivity extends AppCompatActivity implements
 
         frameLedControls = findViewById(id.frameLedControls);
         btnDisconnect = findViewById(id.btn_disconnect);
-        switchGreenLed = findViewById(id.switch_led_green);
-        switchRedLed = findViewById(id.switch_led_red);
+
 
         Dig_Temp_in = findViewById(id.Dig_Temp_in);
         Dig_Temp_out = findViewById(id.Dig_Temp_out);
@@ -210,7 +215,7 @@ public class MainActivity extends AppCompatActivity implements
 
         TextView time = findViewById(id.Time);
         TextView date = findViewById(id.Date);
-        Button btnSynx = findViewById(id.btn_sinx);
+        clock_Synx = findViewById(id.Clock_sinx);
 
         Systimes = findViewById(id.sys_time);
         Dig_Date = findViewById(id.Dig_Date);
@@ -221,10 +226,9 @@ public class MainActivity extends AppCompatActivity implements
         listBtDevices.setOnItemClickListener(this);
 
         btnDisconnect.setOnClickListener(this);
-        btnSynx.setOnClickListener(this);
+        clock_Synx.setOnClickListener(this);
 
-        switchGreenLed.setOnCheckedChangeListener(this);
-        switchRedLed.setOnCheckedChangeListener(this);
+
 
         bluetoothDevices = new ArrayList<>();
 
@@ -300,6 +304,10 @@ public class MainActivity extends AppCompatActivity implements
             }
             // Отображения списка сопряженных устройств
             showFrameControls();
+        } else if (v.equals(clock_Synx)){
+            flag_clock_synx=true;
+
+
         }
     }
 
@@ -328,21 +336,6 @@ public class MainActivity extends AppCompatActivity implements
             if (!isChecked) {
                 showFrameMessage();
             }
-        } else if (buttonView.equals(switchRedLed)) {
-            // TODO включение или отключение красного светодиода
-            Log.d(TAG, "switchRedLed:  Переключаем красный");
-            enableLed(extra_tab, 0, 4);
-
-        } else if (buttonView.equals(switchGreenLed)) {
-            // TODO включение или отключение зелёного светодиода
-             enableLed(extra_tab,0x5, 0x5);
-            Log.d(TAG, "switchGreenLed:  Переключаем зелёный");
-
-
-
-
-
-
         }
     }
 
@@ -372,12 +365,22 @@ public class MainActivity extends AppCompatActivity implements
         return Arrays.copyOf(charBuffer.array(), charBuffer.limit());
     }
 
-    // Программа преобразования формата short формат флоат
-    public float shortToFloat (short[] data, short ukz){
+    // Программа преобразования формата byte в формат float
+    public static float byteToFloat (byte[] data, byte ukz)
+    {
+        float float_temp;
+        float_temp=Float.intBitsToFloat(data[ukz+3]<<24 | (data[ukz+2]& 0xFF) << 16 | (data[ukz+1]& 0xFF) << 8 | (data[ukz]& 0xFF));
+        return float_temp;
 
-        return Float.intBitsToFloat(data[ukz] ^ data[ukz + 1] << 8 ^ data[ukz + 2] << 16 ^ data[ukz + 3] << 24);
     }
 
+    // Программа преобразования формата float в формат byte
+    public static byte[] FloatToByteArray (float value)
+    {
+        int intBits =  Float.floatToIntBits(value);
+        return new byte[] {
+                (byte) (intBits >> 24), (byte) (intBits >> 16), (byte) (intBits >> 8), (byte) (intBits) };
+    }
 
     // расчёт контрольной суммы 8 бит возвращает контрольную сумму
     /*
@@ -390,18 +393,20 @@ public class MainActivity extends AppCompatActivity implements
   MaxLen: 15 байт(127 бит) - обнаружение
     одинарных, двойных, тройных и всех нечетных ошибок
 */
-    private int crc8(byte[] pcBook,int len) {
-        int i, i1;
+    private byte crc8(byte[] pcBook, byte len) {
+        byte i, i1;
+        i=0;
+        i1=0;
 
-        int crc = 0xFF;
+        byte crc = (byte)0xFF;
 
         for (i1 = 0; i1 < len; i1++) {
 
             crc ^= pcBook[i1];
 
             for (i = 0; i < 8; i++) {
-                if ((crc & 0x80) == 0x80) crc = (short) ((crc << 1) ^ 0x31);
-                else crc = (short) (crc << 1);
+                if ((crc & (byte) 0x80) == (byte) 0x80) crc =  (byte)(((crc << 1) ^ 0x31));
+                else crc =  (byte)(crc << 1);
             }
 
         }
@@ -549,7 +554,13 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    @SuppressLint("SimpleDateFormat") SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss dd.MM.yyyy");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss dd.MM.yy");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat hour = new SimpleDateFormat("HH");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat mm = new SimpleDateFormat("mm");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat ss = new SimpleDateFormat("ss");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat dd = new SimpleDateFormat("dd");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat MM = new SimpleDateFormat("MM");
+    @SuppressLint("SimpleDateFormat") SimpleDateFormat yy = new SimpleDateFormat("yy");
 
 
     @SuppressLint("HandlerLeak")
@@ -567,9 +578,16 @@ public class MainActivity extends AppCompatActivity implements
 
                 Dig_Time.setText(radio_data1.str_time);
                 Dig_Date.setText(radio_data1.str_data);
-
                 Systimes.setText(sdf.format(new Date(System.currentTimeMillis())));
+            }
 
+            if (msg.what == SEND_ERROR){
+                Toast.makeText(MainActivity.this,getString(R.string.Send_error),Toast.LENGTH_SHORT).show();
+            }
+
+            if (msg.what == SYNX_CLOCK){
+
+                Toast.makeText(MainActivity.this, R.string.Synx_clock,Toast.LENGTH_SHORT).show();
             }
 
         }
@@ -678,18 +696,19 @@ public class MainActivity extends AppCompatActivity implements
         }
         // Вызов из Майн Активити и отправка данных в у даленное устройство
 
+        @RequiresApi(api = Build.VERSION_CODES.O)
         @Override
         public void run(){
 
             //store for the stream
             byte[] mmBuffer = new byte[60];
             int numBytes; // Количество байт принятых из read()
-            final short [] mmB = new short[60];
+            final byte [] mmB = new byte[60];
             short len;
+            len=0;
 
-            short ukz,i;
+            byte ukz,i, crc_in, crc_temp;
             ukz=0;
-
 
 
             while (isConnected){
@@ -702,18 +721,16 @@ public class MainActivity extends AppCompatActivity implements
                     for (i=0;i<numBytes;i++)
                     {
 //
-                        mmB[ukz]= (short) (mmBuffer[i]&0xFF); // Пишем данные во временный массив, и делаем Логическое И, что бы числа не были больше 0xFF (255)
+                        mmB[ukz]= mmBuffer[i]; // Пишем данные во временный массив, и делаем Логическое И, что бы числа не были больше 0xFF (255)
 
 
+                        // Принимаем первый байт заголовка
+                        if (ukz == 0)
+                            if (mmB[0] ==(byte)0xA5) {
 
-
-
-                        if ((ukz == 0)&&(mmB[0]==0xA5))     // Принимаем первый байт заголовка
-                        {
-
-                            ukz++;
-                            continue;
-                        }
+                                ukz++;
+                                continue;
+                            }
                         if (ukz==1){                            // Принимаем второй байт заголовка
                             if (mmB[1]==0x44){
                                 ukz++;
@@ -729,49 +746,85 @@ public class MainActivity extends AppCompatActivity implements
                         {
                             if ((mmB[3]+7)==ukz)
                             {
+                                crc_temp=mmB[2];
+                                mmB[2]=extra_tab[mmB[6]];
+                                crc_in=crc8(mmB,ukz);
+
+
                                 ukz=0;
-
-                                len = mmB[3];
-
-                                int crc_in = crc8(mmB[],ukz);
-
-                                radio_frame_received.crc=mmB[2]; // Контрольная сумма
-                                radio_frame_received.len=mmB[3];// Длина поля данных
-                                radio_frame_received.seq=mmB[4];// счетчик пакетов
-                                radio_frame_received.sysid=mmB[5];// ид отправителя
-                                radio_frame_received.msgid=mmB[6];// тип сообщения
-                                System.arraycopy(mmB,7, radio_frame_received.data,0,len);
-                                radio_data1.int_temp=shortToFloat(radio_frame_received.data, (short) 10);
-                                radio_data1.ext_temp=shortToFloat(radio_frame_received.data, (short) 19);
-                                radio_data1.press=shortToFloat(radio_frame_received.data, (short) 14);
+                                if (crc_temp==crc_in){
+                                // Если контрольная сумма пакета сошлась то можно отправлять данные дальше по алгоритму
+                                    len = mmB[3];
+                                    radio_frame_received.crc=mmB[2]; // Контрольная сумма
+                                    radio_frame_received.len=mmB[3];// Длина поля данных
+                                    radio_frame_received.seq=mmB[4];// счетчик пакетов
+                                    radio_frame_received.sysid=mmB[5];// ид отправителя
+                                    radio_frame_received.msgid=mmB[6];// тип сообщения
+                                    System.arraycopy(mmB,7, radio_frame_received.data,0,len);
 
 
-                                // Подготовка строки с форматирование для вывода на экран времени часов
-                                radio_data1.str_time=String.format("%02x",radio_frame_received.data[4])+":"+String.format("%02x",radio_frame_received.data[3])+":"+String.format("%02x",radio_frame_received.data[2]);
+                                }
 
-                                // Подготовка строки с форматирование для вывода на экран даты часов
-                                radio_data1.str_data=String.format("%02x",radio_frame_received.data[6])+"."+String.format("%02x",radio_frame_received.data[7])+"."+String.format("%02x",radio_frame_received.data[8]);
+                                if (radio_frame_received.msgid==1){
+                                    // Заполняем структуру стандартной передачи данных
+                                    radio_data1.int_temp=byteToFloat(radio_frame_received.data,(byte)10);
+                                    radio_data1.ext_temp=byteToFloat(radio_frame_received.data, (byte) 19);
+                                    radio_data1.press=byteToFloat(radio_frame_received.data, (byte) 14);
+                                    // Подготовка строки с форматирование для вывода на экран времени часов
+                                    radio_data1.str_time=String.format("%02x",radio_frame_received.data[4])+":"+String.format("%02x",radio_frame_received.data[3])+":"+String.format("%02x",radio_frame_received.data[2]);
+
+                                    // Подготовка строки с форматирование для вывода на экран даты часов
+                                    radio_data1.str_data=String.format("%02x",radio_frame_received.data[6])+"."+String.format("%02x",radio_frame_received.data[7])+"."+String.format("%02x",radio_frame_received.data[8]);
+                                    handler.sendEmptyMessage(FRAME_OK);
+                                }
 
 
+                                if (radio_frame_received.msgid==6){
+                                    // Заполняем структуру ответа на команду
+                                    radio_cmd_resp_s.cmd=radio_frame_received.data[0];
+                                    radio_cmd_resp_s.res=radio_frame_received.data[1];
+                                    radio_cmd_resp_s.cmd=radio_frame_received.data[2];
+                                    System.arraycopy(radio_frame_received.data,2, radio_cmd_resp_s.dat,0,radio_frame_received.len-2); // перегоняем из приёмного массива в массив ответа на команду
+                                }
 
-
-
-
-
-
-                                handler.sendEmptyMessage(FRAME_OK);
                             }
                         }
                     }
 
 
-                    // Наполнение экземпляра массива radio_frame_s данными полученными с блютус
-              //      radio_frame_received.crc=mmB[2]; // Контрольная сумма
-              //      radio_frame_received.len=mmB[3];// Длина поля данных
-              //      radio_frame_received.seq=mmB[4];// счетчик пакетов
-              //      radio_frame_received.sysid=mmB[5];// ид отправителя
-              //      radio_frame_received.msgid=mmB[6];// тип сообщения
+                    if (flag_clock_synx){
+                        radio_cmd_s.target_id=ID_SYS_Clock;
+                        radio_cmd_s.cmd=2;
 
+                        String S_hour =hour.format(new Date(System.currentTimeMillis()));
+                        String S_min = mm.format(new Date(System.currentTimeMillis()));
+                        String S_sec = ss.format(new Date(System.currentTimeMillis()));
+                        String S_day = dd.format(new Date(System.currentTimeMillis()));
+                        String S_mounth = MM.format(new Date(System.currentTimeMillis()));
+                        String S_year = yy.format(new Date(System.currentTimeMillis()));
+
+
+                        int hour_t= Integer.parseInt(S_hour, 16);
+                        int min_t= Integer.parseInt(S_min, 16);
+                        int sec_t= Integer.parseInt(S_sec, 16);
+                        int day_t= Integer.parseInt(S_day, 16);
+                        int mounth_t= Integer.parseInt(S_mounth, 16);
+                        int year_t= Integer.parseInt(S_year, 16);
+
+
+                        radio_cmd_s.dat[0] = (byte)sec_t;
+                        radio_cmd_s.dat[1]  = (byte)min_t;
+                        radio_cmd_s.dat[2]  = (byte)hour_t;
+
+                        radio_cmd_s.dat[4]  = (byte)day_t;
+                        radio_cmd_s.dat[5]  = (byte)mounth_t;
+                        radio_cmd_s.dat[6]  = (byte)year_t;
+                        radio_cmd_s.len= (byte) 7;
+
+                        send_msg(radio_cmd_s.target_id,radio_cmd_s.cmd,radio_cmd_s.len,radio_cmd_s.dat);
+                        flag_clock_synx = false;
+
+                    }
 
 
                 }catch (IOException e){
@@ -790,17 +843,21 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
-        void write(byte[] b, int off, int len) {
+        public void write(byte[] bytes) {
 
             if (mmOutStream!=null) {
 
                 try {
-                    mmOutStream.write(b,off,len);
+                    mmOutStream.write(bytes);
+                    // b     the data.
+                    // off   the start offset in the data.
+                    // len   the number of bytes to write.
 
                     mmOutStream.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
                     Log.e(TAG, "Error occurred when sending data", e);
+                    handler.sendEmptyMessage(SEND_ERROR);
                 }
             }
         }
@@ -821,14 +878,57 @@ public class MainActivity extends AppCompatActivity implements
     }
 
 
-    private void enableLed(byte[] kk, int i, int i1) {
+    private void send_msg(byte target_id, byte cmd, byte len, byte[] dat) {
 
+int i,i1;
+
+i=0;
+i1=0;
+
+
+
+//Сборка пакета на передачу
+    radio_frame_send.stx_1= (byte) 0xA5;
+    radio_frame_send.stx_2=  (byte) 0x44;
+    radio_frame_send.crc=extra_tab[5];
+    radio_frame_send.len= (byte) (len+3);
+    radio_frame_send.seq=sh_seq;
+    radio_frame_send.sysid=target_id;
+    radio_frame_send.msgid=(byte) 0x5;
+    System.arraycopy(dat,0,radio_frame_send.data,3,len+3);
+    radio_frame_send.data[0]=target_id;
+    radio_frame_send.data[1]=cmd;
+    radio_frame_send.data[2]=len;
+
+        if (sh_seq>=0){
+            sh_seq++;
+        }else {
+            sh_seq=0;
+        }
+
+
+
+        byte[] kk = new byte[radio_frame_send.len+7];
+
+        kk[0]=radio_frame_send.stx_1;
+        kk[1]=radio_frame_send.stx_2;
+        kk[2]=radio_frame_send.crc;
+        kk[3]=radio_frame_send.len;
+        kk[4]=radio_frame_send.seq;
+        kk[5]=radio_frame_send.sysid;
+        kk[6]=radio_frame_send.msgid;
+        System.arraycopy(radio_frame_send.data,0,kk,7,len+3);
+
+        // Расчёт контрольной суммы пакета
+                radio_frame_send.crc=crc8(kk, radio_frame_send.len);
+        kk[2]=radio_frame_send.crc;
+
+        //        // Расчёт контрольной суммы пакета
 
         if (connectedThread != null && connectThread.isConnect()) {
-            connectedThread.write(kk, i, i1);
+            connectedThread.write(kk);
 
-         /*
-            connectedThread.write(byte[])*/
+
         }
 
     }

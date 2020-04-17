@@ -18,7 +18,7 @@
 
     <FrameLayout
         android:id="@+id/frame_message"
-        android:visibility="gone"
+        android:visibility="visible"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -67,7 +67,7 @@
         android:id="@+id/frameLedControls"
         android:layout_width="match_parent"
         android:layout_height="537dp"
-        android:visibility="visible">
+        android:visibility="gone">
 
         <Button
             android:id="@+id/btn_disconnect"
@@ -77,36 +77,11 @@
             android:layout_marginTop="30dp"
             android:text="@string/disconnect" />
 
-
-        <Switch
-            android:id="@+id/switch_led_red"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/btn_disconnect"
-            android:layout_centerInParent="true"
-            android:text="@string/led_red"
-            android:textColor="@color/color_red"
-            android:textSize="18sp" />
-
-        <Switch
-            android:id="@+id/switch_led_green"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/switch_led_red"
-            android:layout_centerInParent="true"
-            android:layout_marginTop="8dp"
-            android:text="@string/led_green"
-            android:textColor="@color/color_green"
-            android:textSize="18sp" />
-
-
-
-
         <TextView
             android:id="@+id/Temp_in"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/switch_led_green"
+            android:layout_below="@id/btn_disconnect"
             android:layout_marginStart="8dp"
             android:layout_marginTop="14dp"
             android:textSize="22sp"
@@ -116,7 +91,7 @@
          android:id="@+id/Dig_Temp_in"
          android:layout_width="wrap_content"
          android:layout_height="wrap_content"
-         android:layout_below="@+id/switch_led_green"
+         android:layout_below="@+id/btn_disconnect"
          android:layout_marginStart="250sp"
          android:layout_marginTop="14dp"
          android:textSize="22sp"/>
@@ -199,7 +174,7 @@
 
         <Button
             android:textStyle="bold"
-            android:id="@+id/btn_sinx"
+            android:id="@+id/Clock_sinx"
             android:layout_below="@+id/Date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -212,9 +187,9 @@
             android:id="@+id/sys_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/btn_sinx"
+            android:layout_below="@+id/Clock_sinx"
             android:layout_marginStart="70dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="15dp"
             android:textSize="20sp"/>
 
 
