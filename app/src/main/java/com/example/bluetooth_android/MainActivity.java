@@ -891,14 +891,15 @@ i1=0;
     radio_frame_send.stx_1= (byte) 0xA5;
     radio_frame_send.stx_2=  (byte) 0x44;
     radio_frame_send.crc=extra_tab[5];
-    radio_frame_send.len= (byte) (len+3);
+    radio_frame_send.len= (byte) (len+4);
     radio_frame_send.seq=sh_seq;
     radio_frame_send.sysid=target_id;
     radio_frame_send.msgid=(byte) 0x5;
-    System.arraycopy(dat,0,radio_frame_send.data,3,len+3);
+    System.arraycopy(dat,0,radio_frame_send.data,4,len+4);
     radio_frame_send.data[0]=target_id;
     radio_frame_send.data[1]=cmd;
-    radio_frame_send.data[2]=len;
+    radio_frame_send.data[2]= (byte) (len+1);
+    radio_frame_send.data[3]=16;
 
         if (sh_seq>=0){
             sh_seq++;
@@ -917,10 +918,10 @@ i1=0;
         kk[4]=radio_frame_send.seq;
         kk[5]=radio_frame_send.sysid;
         kk[6]=radio_frame_send.msgid;
-        System.arraycopy(radio_frame_send.data,0,kk,7,len+3);
+        System.arraycopy(radio_frame_send.data,0,kk,7,len+4);
 
         // Расчёт контрольной суммы пакета
-                radio_frame_send.crc=crc8(kk, radio_frame_send.len);
+                radio_frame_send.crc=crc8(kk, (byte)(radio_frame_send.len+7));
         kk[2]=radio_frame_send.crc;
 
         //        // Расчёт контрольной суммы пакета

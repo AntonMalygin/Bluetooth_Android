@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bluetooth_Android</string>
+    <string name="app_name">Часы в гараже</string>
     <string name="bluetooth_on_off">Вкл./Выкл. Bluetooth</string>
     <string name="bluetooth_off">Bluetooth выключен</string>
     <string name="start_search">Начать поиск</string>
