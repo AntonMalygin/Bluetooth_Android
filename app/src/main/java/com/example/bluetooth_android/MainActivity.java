@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,6 +30,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -42,14 +45,14 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import es.dmoral.toasty.Toasty;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
@@ -57,9 +60,9 @@ import static com.example.bluetooth_android.R.drawable;
 import static com.example.bluetooth_android.R.id;
 import static com.example.bluetooth_android.R.layout;
 import static com.example.bluetooth_android.R.string.Connecting;
+import static com.example.bluetooth_android.R.string.Temp_in;
 import static com.example.bluetooth_android.R.string.bluetooth_not_supported;
 import static com.example.bluetooth_android.R.string.dont_connect;
-import static com.example.bluetooth_android.R.string.hh;
 import static com.example.bluetooth_android.R.string.please_wait;
 import static com.example.bluetooth_android.R.string.start_search;
 import static com.example.bluetooth_android.R.string.stop_search;
@@ -86,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements
     // Присвоение констант для часов (команды и т.п.)
     private static final byte SYNX_CLOCK = 2;
     private static final byte ID_SYS_Clock = 4;
+    private static final int SYNX_CLOCK_ERROR = 5; // Ошибка синхронизирования часов
     private static byte sh_seq=0;//вставляем счетчик пакетов
 
 
@@ -104,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements
         float int_temp;//внутренняя температура град (bmp280)
         float press; //атмосферное давление мм рт ст (bmp280)
         byte ds_error; //код ошибки ds18b20
-        float ext_temp;//внешняя температура град (das18b20)
+        float ext_temp;//внешняя температура град (ds18b20)
 
 
     }
@@ -156,6 +160,14 @@ public class MainActivity extends AppCompatActivity implements
     private Button btnDisconnect;
     private Button clock_Synx;
 
+
+
+    private TextView Temp_in;
+    private TextView Temp_out;
+    private TextView Pressure;
+
+
+
     private TextView Dig_Temp_in;
     private TextView Dig_Temp_out;
     private TextView Dig_Press;
@@ -177,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements
     private ConnectedThread connectedThread;
     private ProgressDialog progressDialog;
 
-
+private ColorStateList  oldColors;
 
 
 
@@ -208,13 +220,18 @@ public class MainActivity extends AppCompatActivity implements
         frameLedControls = findViewById(id.frameLedControls);
         btnDisconnect = findViewById(id.btn_disconnect);
 
+        Temp_in = findViewById(id.Temp_in);
+        Temp_out = findViewById(id.Temp_out);
+        Pressure = findViewById(id.Pressure);
+
+        oldColors =  Temp_in.getTextColors(); //save original colors
 
         Dig_Temp_in = findViewById(id.Dig_Temp_in);
         Dig_Temp_out = findViewById(id.Dig_Temp_out);
         Dig_Press = findViewById(id.Dig_Press);
 
-        TextView time = findViewById(id.Time);
-        TextView date = findViewById(id.Date);
+        TextView Time = findViewById(id.Time);
+        TextView Date = findViewById(id.Date);
         clock_Synx = findViewById(id.Clock_sinx);
 
         Systimes = findViewById(id.sys_time);
@@ -254,8 +271,9 @@ public class MainActivity extends AppCompatActivity implements
 
 
         if (bluetoothAdapter == null) {
-            Toast.makeText(this, bluetooth_not_supported, Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "onCreate: " + getString(bluetooth_not_supported));
+
+            Toasty.info(MainActivity.this, bluetooth_not_supported,Toast.LENGTH_SHORT).show();
+
             finish();
         }
 
@@ -554,6 +572,8 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+
+
     @SuppressLint("SimpleDateFormat") SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss dd.MM.yy");
     @SuppressLint("SimpleDateFormat") SimpleDateFormat hour = new SimpleDateFormat("HH");
     @SuppressLint("SimpleDateFormat") SimpleDateFormat mm = new SimpleDateFormat("mm");
@@ -561,6 +581,7 @@ public class MainActivity extends AppCompatActivity implements
     @SuppressLint("SimpleDateFormat") SimpleDateFormat dd = new SimpleDateFormat("dd");
     @SuppressLint("SimpleDateFormat") SimpleDateFormat MM = new SimpleDateFormat("MM");
     @SuppressLint("SimpleDateFormat") SimpleDateFormat yy = new SimpleDateFormat("yy");
+
 
 
     @SuppressLint("HandlerLeak")
@@ -571,10 +592,32 @@ public class MainActivity extends AppCompatActivity implements
         public void handleMessage(Message msg) {
 
 
-            if (msg.what == FRAME_OK) {
-                Dig_Temp_in.setText(Float.toString(radio_data1.int_temp));
-                Dig_Temp_out.setText(Float.toString(radio_data1.ext_temp));
-                Dig_Press.setText(Float.toString(radio_data1.press));
+
+            if (msg.what ==FRAME_OK) {
+
+                if (radio_data1.bm_error==0){
+                    Dig_Temp_in.setTextColor(oldColors);
+                    Dig_Press.setTextColor(oldColors);
+                    Dig_Temp_in.setText(Float.toString(radio_data1.int_temp));
+                    Dig_Press.setText(Float.toString(radio_data1.press));
+                }else {
+                    Dig_Temp_in.setTextColor(Color.RED);
+                    Dig_Press.setTextColor(Color.RED);
+                    Dig_Temp_in.setText("err "+radio_data1.bm_error);
+                    Dig_Press.setText("err "+radio_data1.bm_error);
+                }
+
+                if (radio_data1.ds_error==0){
+                    Dig_Temp_out.setTextColor(oldColors);
+                    Dig_Temp_out.setText(Float.toString(radio_data1.ext_temp));
+                }else {
+                    Dig_Temp_out.setTextColor(Color.RED);
+                    Dig_Temp_out.setText("err "+radio_data1.ds_error);
+                }
+
+
+
+
 
                 Dig_Time.setText(radio_data1.str_time);
                 Dig_Date.setText(radio_data1.str_data);
@@ -582,12 +625,18 @@ public class MainActivity extends AppCompatActivity implements
             }
 
             if (msg.what == SEND_ERROR){
-                Toast.makeText(MainActivity.this,getString(R.string.Send_error),Toast.LENGTH_SHORT).show();
+
+                Toasty.error(MainActivity.this, getString(R.string.Send_error), Toasty.LENGTH_SHORT, true).show();
             }
 
             if (msg.what == SYNX_CLOCK){
 
-                Toast.makeText(MainActivity.this, R.string.Synx_clock,Toast.LENGTH_SHORT).show();
+                Toasty.info(MainActivity.this,R.string.Synx_clock, Toast.LENGTH_SHORT).show();
+            }
+
+            if (msg.what == SYNX_CLOCK_ERROR){
+
+                Toasty.error(MainActivity.this, getString(R.string.notSynx_clock)+ " " +getString(R.string.error_code) +" "+ radio_data1.ds_error, Toasty.LENGTH_LONG, true).show();
             }
 
         }
@@ -624,7 +673,8 @@ public class MainActivity extends AppCompatActivity implements
                     @Override
                     public void run() {
                         progressDialog.dismiss(); // Скрывание диалогового окна о текущем соединении с устройством при удачном
-                        Toast.makeText(MainActivity.this, getString(dont_connect), Toast.LENGTH_SHORT).show();
+
+                        Toasty.error(MainActivity.this, dont_connect,Toast.LENGTH_SHORT).show();
                     }
                 });
 
@@ -679,7 +729,7 @@ public class MainActivity extends AppCompatActivity implements
 
             } catch (IOException e){
                 e.printStackTrace();
-                Log.e(TAG, "Error occurred when creating input stream", e);
+
             }
 
             try{
@@ -687,7 +737,7 @@ public class MainActivity extends AppCompatActivity implements
                 tmpOut=socket.getOutputStream();
             } catch (IOException e){
                 e.printStackTrace();
-                Log.e(TAG, "Error occurred when creating output stream", e);
+
             }
             this.mmInStream=tmpIn;
             this.mmOutStream=tmpOut;
@@ -767,9 +817,17 @@ public class MainActivity extends AppCompatActivity implements
 
                                 if (radio_frame_received.msgid==1){
                                     // Заполняем структуру стандартной передачи данных
+                                    radio_data1.dt_format=radio_frame_received.data[0];                     // Формат календаря 10 или 16
+                                    radio_data1.dt_error=radio_frame_received.data[1];                      // Код ошибки часов
+                                    radio_data1.bm_error=radio_frame_received.data[9];                      // Код ошибки bmp280
+
                                     radio_data1.int_temp=byteToFloat(radio_frame_received.data,(byte)10);
-                                    radio_data1.ext_temp=byteToFloat(radio_frame_received.data, (byte) 19);
                                     radio_data1.press=byteToFloat(radio_frame_received.data, (byte) 14);
+
+                                    radio_data1.ds_error=radio_frame_received.data[18];                     // Код ошибки ds18b20
+                                    radio_data1.ext_temp=byteToFloat(radio_frame_received.data, (byte) 19);
+
+
                                     // Подготовка строки с форматирование для вывода на экран времени часов
                                     radio_data1.str_time=String.format("%02x",radio_frame_received.data[4])+":"+String.format("%02x",radio_frame_received.data[3])+":"+String.format("%02x",radio_frame_received.data[2]);
 
@@ -783,8 +841,20 @@ public class MainActivity extends AppCompatActivity implements
                                     // Заполняем структуру ответа на команду
                                     radio_cmd_resp_s.cmd=radio_frame_received.data[0];
                                     radio_cmd_resp_s.res=radio_frame_received.data[1];
-                                    radio_cmd_resp_s.cmd=radio_frame_received.data[2];
+
                                     System.arraycopy(radio_frame_received.data,2, radio_cmd_resp_s.dat,0,radio_frame_received.len-2); // перегоняем из приёмного массива в массив ответа на команду
+                                    if (radio_cmd_resp_s.cmd==2){
+                                        if(radio_cmd_resp_s.res==0){
+                                            handler.sendEmptyMessage(SYNX_CLOCK);
+                                        }
+                                        if(radio_cmd_resp_s.res!=0){
+                                            radio_data1.ds_error=radio_cmd_resp_s.res;
+                                            handler.sendEmptyMessage(SYNX_CLOCK_ERROR);
+                                        }
+
+
+                                    }
+
                                 }
 
                             }

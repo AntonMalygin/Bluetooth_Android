@@ -30,4 +30,6 @@
     <string name="sinx_time">Синхронизировать время</string>
     <string name="Send_error">Не получилось отправить данные</string>
     <string name="Synx_clock">Часы Сихронизированы</string>
+    <string name="notSynx_clock">Часы не Сихронизированы </string>
+    <string name="error_code">Error code </string>
 </resources>

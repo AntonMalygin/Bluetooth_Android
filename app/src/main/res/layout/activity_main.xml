@@ -85,6 +85,7 @@
             android:layout_marginStart="8dp"
             android:layout_marginTop="14dp"
             android:textSize="22sp"
+
             android:text="@string/Temp_in" />
 
      <TextView
